@@ -5,16 +5,27 @@
 #include <QTimer>
 #include <QPalette>
 #include <QFont>
-#include <QRandomGenerator>
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
 #include <QApplication>
 #include <QDir>
 #include <QFileSystemWatcher>
-#include <QTextCodec>
 #include <QRegExp>
 #include <QTime>
+
+// Qt5에서 QTextCodec 사용
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    #include <QTextCodec>
+#endif
+
+// Qt5에서 랜덤 생성을 위한 호환성
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+    #include <QRandomGenerator>
+#else
+    #include <QTime>
+    #include <cstdlib>
+#endif
 
 InfoBox::InfoBox(QWidget *parent)
     : QWidget(parent)
@@ -48,7 +59,11 @@ InfoBox::InfoBox(QWidget *parent)
         QFile file(m_serviceFilePath);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             stream.setCodec("UTF-8");
+#else
+            stream.setEncoding(QStringConverter::Utf8);
+#endif
             stream << "유아-유치부\t4층\t오전 9시\n";
             stream << "유초등부\t4층\t오전 9시\n";
             stream << "중고등부\t3층\t오전 9시\n";
@@ -177,7 +192,7 @@ void InfoBox::updateInfo()
         QStringList weatherTypes;
         weatherTypes << "맑음" << "구름 조금" << "흐림" << "비" << "눈";
         
-        // Qt5에서 랜덤 생성 (QRandomGenerator가 없는 경우 대비)
+        // Qt5에서 랜덤 생성
         #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
             int randomIndex = QRandomGenerator::global()->bounded(weatherTypes.size());
             m_currentTemp = QRandomGenerator::global()->bounded(-5, 36);
@@ -242,7 +257,11 @@ void InfoBox::loadServiceSchedule()
 
     m_allServices.clear();
     QTextStream stream(&file);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     stream.setCodec("UTF-8");
+#else
+    stream.setEncoding(QStringConverter::Utf8);
+#endif
 
     while (!stream.atEnd()) {
         QString line = stream.readLine().trimmed();
@@ -308,11 +327,18 @@ QString InfoBox::getCurrentServiceInfo()
 
     // 각 층별로 현재 예배 상태 확인
     QList<int> floors = m_floorServices.keys();
-    std::sort(floors.begin(), floors.end());
+    
+    // Qt5 호환 정렬
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+        std::sort(floors.begin(), floors.end());
+    #else
+        qSort(floors);
+    #endif
 
     bool hasActiveService = false;
 
-    for (int floor : floors) {
+    for (int i = 0; i < floors.size(); ++i) {
+        int floor = floors[i];
         QQueue<ServiceInfo> &services = m_floorServices[floor];
         QString floorInfo = QString("%1층: ").arg(floor);
 
