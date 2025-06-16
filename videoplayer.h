@@ -19,9 +19,9 @@ public:
 
 private slots:
     void onDirectoryChanged(const QString &path);
-    void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
-    void onStateChanged(QMediaPlayer::State state);
-    void handleError(QMediaPlayer::Error error);
+    void onMediaStatusChanged();
+    void onStateChanged();
+    void handleError();
     void onPositionChanged(qint64 position);
 
 private:

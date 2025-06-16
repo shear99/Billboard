@@ -58,21 +58,21 @@ VideoPlayer::VideoPlayer(QWidget *parent)
     // 파일 시스템 감시 설정
     setupWatcher();
 
-    // 시그널 연결 (Qt5 방식)
-    connect(m_player, QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),
-            this, &VideoPlayer::handleError);
+    // 시그널 연결 (Qt5 방식 - SIGNAL/SLOT 매크로 사용)
+    connect(m_player, SIGNAL(error(QMediaPlayer::Error)),
+            this, SLOT(handleError()));
 
     // 미디어 상태 변경 감지
-    connect(m_player, &QMediaPlayer::mediaStatusChanged,
-            this, &VideoPlayer::onMediaStatusChanged);
+    connect(m_player, SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),
+            this, SLOT(onMediaStatusChanged()));
 
     // 재생 상태 변경 감지
-    connect(m_player, &QMediaPlayer::stateChanged,
-            this, &VideoPlayer::onStateChanged);
+    connect(m_player, SIGNAL(stateChanged(QMediaPlayer::State)),
+            this, SLOT(onStateChanged()));
 
     // 위치 변경 감지 (디버깅용)
-    connect(m_player, &QMediaPlayer::positionChanged,
-            this, &VideoPlayer::onPositionChanged);
+    connect(m_player, SIGNAL(positionChanged(qint64)),
+            this, SLOT(onPositionChanged(qint64)));
 
     // 초기 비디오 로드 (약간의 지연 후)
     QTimer::singleShot(100, this, &VideoPlayer::loadVideos);
@@ -149,8 +149,9 @@ void VideoPlayer::onDirectoryChanged(const QString &path)
     });
 }
 
-void VideoPlayer::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
+void VideoPlayer::onMediaStatusChanged()
 {
+    QMediaPlayer::MediaStatus status = m_player->mediaStatus();
     qDebug() << "미디어 상태 변경:" << status;
 
     switch (status) {
@@ -168,8 +169,9 @@ void VideoPlayer::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
     }
 }
 
-void VideoPlayer::onStateChanged(QMediaPlayer::State state)
+void VideoPlayer::onStateChanged()
 {
+    QMediaPlayer::State state = m_player->state();
     qDebug() << "재생 상태 변경:" << state;
 
     switch (state) {
@@ -201,8 +203,9 @@ void VideoPlayer::playNext()
     m_playlist->next();
 }
 
-void VideoPlayer::handleError(QMediaPlayer::Error error)
+void VideoPlayer::handleError()
 {
+    QMediaPlayer::Error error = m_player->error();
     qWarning() << "미디어 플레이어 에러:" << error << "-" << m_player->errorString();
 
     // 에러 발생 시 다음 비디오 재생 시도
