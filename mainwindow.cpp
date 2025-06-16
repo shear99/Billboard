@@ -42,20 +42,20 @@ MainWindow::MainWindow(QWidget *parent)
     m_mainSplitter->setStretchFactor(1, 3);  // 오른쪽 정보창
 
     // 스플리터 핸들 스타일 설정 (더 눈에 띄게)
-    QString splitterStyle = R"(
-        QSplitter::handle {
-            background-color: #555;
-        }
-        QSplitter::handle:horizontal {
-            width: 4px;
-        }
-        QSplitter::handle:vertical {
-            height: 4px;
-        }
-        QSplitter::handle:hover {
-            background-color: #888;
-        }
-    )";
+    QString splitterStyle = QString(
+        "QSplitter::handle {"
+        "    background-color: #555;"
+        "}"
+        "QSplitter::handle:horizontal {"
+        "    width: 4px;"
+        "}"
+        "QSplitter::handle:vertical {"
+        "    height: 4px;"
+        "}"
+        "QSplitter::handle:hover {"
+        "    background-color: #888;"
+        "}"
+    );
     m_mainSplitter->setStyleSheet(splitterStyle);
     m_leftSplitter->setStyleSheet(splitterStyle);
 

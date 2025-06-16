@@ -6,6 +6,7 @@
 #include <QPalette>
 #include <QFont>
 #include <QRandomGenerator>
+#include <QDebug>
 
 InfoBox::InfoBox(QWidget *parent)
     : QWidget(parent)
@@ -114,18 +115,36 @@ void InfoBox::updateInfo()
 
     if (weatherUpdateCounter % 60 == 0) {
         // 날씨 랜덤 변경
-        QStringList weatherTypes = {"맑음", "구름 조금", "흐림", "비", "눈"};
-        int randomIndex = QRandomGenerator::global()->bounded(weatherTypes.size());
+        QStringList weatherTypes;
+        weatherTypes << "맑음" << "구름 조금" << "흐림" << "비" << "눈";
+        
+        // Qt5에서 랜덤 생성 (QRandomGenerator가 없는 경우 대비)
+        #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+            int randomIndex = QRandomGenerator::global()->bounded(weatherTypes.size());
+            m_currentTemp = QRandomGenerator::global()->bounded(-5, 36);
+        #else
+            qsrand(QTime::currentTime().msec());
+            int randomIndex = qrand() % weatherTypes.size();
+            m_currentTemp = qrand() % 41 - 5; // -5 ~ 35도
+        #endif
+        
         m_currentWeather = weatherTypes[randomIndex];
-
-        // 온도 랜덤 변경 (-5 ~ 35도)
-        m_currentTemp = QRandomGenerator::global()->bounded(-5, 36);
     }
 
     m_weatherLabel->setText(m_currentWeather);
     m_temperatureLabel->setText(QString("%1°C").arg(m_currentTemp));
 
     // 추가 정보
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        int humidity = QRandomGenerator::global()->bounded(40, 81);
+        int windSpeed = QRandomGenerator::global()->bounded(1, 11);
+        bool airQuality = QRandomGenerator::global()->bounded(0, 100) < 50;
+    #else
+        int humidity = qrand() % 41 + 40; // 40-80%
+        int windSpeed = qrand() % 10 + 1; // 1-10 m/s
+        bool airQuality = (qrand() % 100) < 50;
+    #endif
+
     QString additionalInfo = QString(
                                  "오늘의 정보\n\n"
                                  "습도: %1%\n"
@@ -136,9 +155,9 @@ void InfoBox::updateInfo()
                                  "공지사항:\n"
                                  "- 시스템 정상 작동 중\n"
                                  "- 비디오 재생 중"
-                                 ).arg(QRandomGenerator::global()->bounded(40, 81))
-                                 .arg(QRandomGenerator::global()->bounded(1, 11))
-                                 .arg(QRandomGenerator::global()->bounded(0, 100) < 50 ? "좋음" : "보통");
+                                 ).arg(humidity)
+                                 .arg(windSpeed)
+                                 .arg(airQuality ? "좋음" : "보통");
 
     m_additionalInfoLabel->setText(additionalInfo);
 }

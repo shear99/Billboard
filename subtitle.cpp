@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QDebug>
 #include <QFileSystemWatcher>
+#include <QTextCodec>
 
 Subtitle::Subtitle(QWidget *parent)
     : QWidget(parent)
@@ -41,7 +42,8 @@ Subtitle::Subtitle(QWidget *parent)
         QFile file(m_subtitlePath);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
-            stream.setEncoding(QStringConverter::Utf8);
+            // Qt5에서 UTF-8 설정
+            stream.setCodec("UTF-8");
             stream << "시스템이 정상적으로 작동하고 있습니다. 모든 기능이 활성화되었습니다.\n";
             stream << "오늘의 날씨는 맑고 화창합니다. 외출하기 좋은 날씨입니다.\n";
             stream << "새로운 공지사항이 업데이트되었습니다. 확인 부탁드립니다.\n";
@@ -118,7 +120,8 @@ void Subtitle::loadSubtitles()
 
     m_textList.clear();
     QTextStream stream(&file);
-    stream.setEncoding(QStringConverter::Utf8);
+    // Qt5에서 UTF-8 설정
+    stream.setCodec("UTF-8");
 
     while (!stream.atEnd()) {
         QString line = stream.readLine().trimmed();

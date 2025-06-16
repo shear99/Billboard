@@ -26,7 +26,6 @@ private:
 
     QSplitter *m_mainSplitter;      // 좌우 분할
     QSplitter *m_leftSplitter;      // 상하 분할
-    QWidget *m_leftContainer;        // 왼쪽 영역 컨테이너
 };
 
 #endif // MAINWINDOW_H

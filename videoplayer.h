@@ -7,6 +7,7 @@
 
 class QMediaPlayer;
 class QVideoWidget;
+class QMediaPlaylist;
 
 class VideoPlayer : public QWidget
 {
@@ -18,9 +19,10 @@ public:
 
 private slots:
     void onDirectoryChanged(const QString &path);
-    void onMediaStatusChanged();
-    void onPlaybackStateChanged();
-    void handleError();
+    void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
+    void onStateChanged(QMediaPlayer::State state);
+    void handleError(QMediaPlayer::Error error);
+    void onPositionChanged(qint64 position);
 
 private:
     void loadVideos();
@@ -29,12 +31,12 @@ private:
 
     QMediaPlayer *m_player;
     QVideoWidget *m_videoWidget;
+    QMediaPlaylist *m_playlist;
     QFileSystemWatcher *m_watcher;
 
     QString m_videoPath;
-    QList<QUrl> m_playlist;
-    int m_currentIndex;
     QStringList m_currentFiles;
+    int m_currentIndex;
 };
 
 #endif // VIDEOPLAYER_H
