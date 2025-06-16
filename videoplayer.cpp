@@ -71,8 +71,7 @@ VideoPlayer::VideoPlayer(QWidget *parent)
             this, SLOT(onStateChanged()));
 
     // 위치 변경 감지 (디버깅용)
-    connect(m_player, SIGNAL(positionChanged(qint64)),
-            this, SLOT(onPositionChanged(qint64)));
+    //connect(m_player, SIGNAL(positionChanged(qint64)),this, SLOT(onPositionChanged(qint64)));
 
     // 초기 비디오 로드 (약간의 지연 후)
     QTimer::singleShot(100, this, &VideoPlayer::loadVideos);
@@ -184,32 +183,5 @@ void VideoPlayer::onStateChanged()
     case QMediaPlayer::StoppedState:
         qDebug() << "정지";
         break;
-    }
-}
-
-void VideoPlayer::onPositionChanged(qint64 position)
-{
-    // 디버깅용 - 매 10초마다 위치 출력
-    static qint64 lastLogTime = 0;
-    if (position - lastLogTime > 10000) {
-        lastLogTime = position;
-        qDebug() << "재생 위치:" << position / 1000 << "초";
-    }
-}
-
-void VideoPlayer::playNext()
-{
-    // Qt5에서는 플레이리스트가 자동으로 다음 파일을 재생함
-    m_playlist->next();
-}
-
-void VideoPlayer::handleError()
-{
-    QMediaPlayer::Error error = m_player->error();
-    qWarning() << "미디어 플레이어 에러:" << error << "-" << m_player->errorString();
-
-    // 에러 발생 시 다음 비디오 재생 시도
-    if (m_playlist->mediaCount() > 1) {
-        QTimer::singleShot(1000, this, &VideoPlayer::playNext);
     }
 }

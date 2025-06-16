@@ -4,8 +4,6 @@
 #include <QTimer>
 #include <QPalette>
 #include <QFont>
-#include <QPropertyAnimation>
-#include <QGraphicsOpacityEffect>
 #include <QFile>
 #include <QTextStream>
 #include <QApplication>
@@ -101,10 +99,6 @@ void Subtitle::setupUI()
     // 최소/최대 높이 설정 (드래그로 조절 가능하도록)
     setMinimumHeight(30);
     setMaximumHeight(200);  // 최대 200px까지 늘릴 수 있음
-
-    // 투명도 효과를 위한 설정
-    QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(this);
-    m_label->setGraphicsEffect(effect);
 }
 
 void Subtitle::loadSubtitles()
@@ -180,34 +174,11 @@ void Subtitle::showNextText()
 {
     if (m_textList.isEmpty()) return;
 
-    // 페이드 아웃 애니메이션
-    QGraphicsOpacityEffect *effect = qobject_cast<QGraphicsOpacityEffect*>(m_label->graphicsEffect());
-    if (effect) {
-        QPropertyAnimation *fadeOut = new QPropertyAnimation(effect, "opacity");
-        fadeOut->setDuration(500);
-        fadeOut->setStartValue(1.0);
-        fadeOut->setEndValue(0.0);
-
-        // 페이드 아웃 완료 후 텍스트 변경 및 페이드 인
-        connect(fadeOut, &QPropertyAnimation::finished, [this, effect]() {
-            // 텍스트 변경
-            m_label->setText(m_textList[m_currentIndex]);
-            m_currentIndex = (m_currentIndex + 1) % m_textList.size();
-
-            // 페이드 인 애니메이션
-            QPropertyAnimation *fadeIn = new QPropertyAnimation(effect, "opacity");
-            fadeIn->setDuration(500);
-            fadeIn->setStartValue(0.0);
-            fadeIn->setEndValue(1.0);
-            fadeIn->start(QPropertyAnimation::DeleteWhenStopped);
-        });
-
-        fadeOut->start(QPropertyAnimation::DeleteWhenStopped);
-    }
+    m_label->setText(m_textList[m_currentIndex]);
+    m_currentIndex = (m_currentIndex + 1) % m_textList.size();
 }
 
 void Subtitle::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
-    // 크기 변경 시 특별한 처리 불필요 (레이아웃이 자동 처리)
 }
