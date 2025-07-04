@@ -1,6 +1,4 @@
-QT       += core gui multimedia multimediawidgets
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT += core gui widgets multimedia multimediawidgets
 
 CONFIG += c++11
 
@@ -8,21 +6,23 @@ CONFIG += c++11
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+INCLUDEPATH += include
+
 SOURCES += \
-    infobox.cpp \
-    main.cpp \
-    mainwindow.cpp \
-    subtitle.cpp \
-    videoplayer.cpp
+    src/infobox.cpp \
+    src/main.cpp \
+    src/mainwindow.cpp \
+    src/subtitle.cpp \
+    src/videoplayer.cpp
 
 HEADERS += \
-    infobox.h \
-    mainwindow.h \
-    subtitle.h \
-    videoplayer.h
+    include/infobox.h \
+    include/mainwindow.h \
+    include/subtitle.h \
+    include/videoplayer.h
 
 FORMS += \
-    mainwindow.ui
+    ui/mainwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

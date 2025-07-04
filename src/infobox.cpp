@@ -11,12 +11,8 @@
 #include <QApplication>
 #include <QDir>
 #include <QFileSystemWatcher>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QTime>
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    #include <QTextCodec>
-#endif
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     #include <QRandomGenerator>
@@ -32,18 +28,10 @@ InfoBox::InfoBox(QWidget *parent)
 {
     setupUI();
 
-    // --- 업데이트 로직 분리 ---
-    // 1. 시간 표시 전용 타이머 (1초마다)
     m_updateTimer = new QTimer(this);
-    connect(m_updateTimer, &QTimer::timeout, this, &InfoBox::updateTime);
+    connect(m_updateTimer, &QTimer::timeout, this, &InfoBox::updateInfo);
     m_updateTimer->start(1000);
 
-    // 2. 정보 업데이트용 타이머 (60초마다)
-    m_slowUpdateTimer = new QTimer(this);
-    connect(m_slowUpdateTimer, &QTimer::timeout, this, &InfoBox::updateDetails);
-    m_slowUpdateTimer->start(180000); // 60초
-
-    // 파일 감시자 설정
     m_serviceWatcher = new QFileSystemWatcher(this);
     connect(m_serviceWatcher, &QFileSystemWatcher::fileChanged,
             this, &InfoBox::onServiceFileChanged);
@@ -59,9 +47,6 @@ InfoBox::InfoBox(QWidget *parent)
         QFile file(m_serviceFilePath);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            stream.setCodec("UTF-8");
-#endif
             stream << "유아-유치부\t4층\t오전 9시\n";
             stream << "유초등부\t4층\t오전 9시\n";
             stream << "중고등부\t3층\t오전 9시\n";
@@ -77,10 +62,7 @@ InfoBox::InfoBox(QWidget *parent)
     }
 
     loadServiceSchedule();
-
-    // 초기 정보 표시를 위해 각 함수를 한 번씩 호출
-    updateTime();
-    updateDetails();
+    updateInfo();
 }
 
 InfoBox::~InfoBox()
@@ -149,8 +131,7 @@ void InfoBox::setupUI()
     setLayout(m_layout);
 }
 
-// 1초마다 호출되는 시간 업데이트 함수
-void InfoBox::updateTime()
+void InfoBox::updateInfo()
 {
     QDateTime now = QDateTime::currentDateTime();
     QString dateStr = now.toString("MM월 dd일");
@@ -167,59 +148,63 @@ void InfoBox::updateTime()
     dayMap["Sunday"] = "일요일";
 
     QString koreanDay = dayMap.value(dayStr, dayStr);
-
     m_dateTimeLabel->setText(QString("%1\n%2\n%3").arg(dateStr).arg(koreanDay).arg(timeStr));
+
+    // 날씨 정보 업데이트 (매 분마다만)
+    static int lastMinute = -1;
+    int currentMinute = now.time().minute();
+    if (lastMinute != currentMinute) {
+        lastMinute = currentMinute;
+        
+        QStringList weatherTypes;
+        weatherTypes << "맑음" << "구름 조금" << "흐림" << "비" << "눈";
+        
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        int randomIndex = QRandomGenerator::global()->bounded(weatherTypes.size());
+        m_currentTemp = QRandomGenerator::global()->bounded(-5, 36);
+#else
+        qsrand(QTime::currentTime().msec());
+        int randomIndex = qrand() % weatherTypes.size();
+        m_currentTemp = qrand() % 41 - 5;
+#endif
+        
+        m_currentWeather = weatherTypes[randomIndex];
+        m_weatherLabel->setText(m_currentWeather);
+        m_temperatureLabel->setText(QString("%1°C").arg(m_currentTemp));
+
+        QString serviceInfo = getCurrentServiceInfo();
+        m_serviceInfoLabel->setText(serviceInfo);
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        int humidity = QRandomGenerator::global()->bounded(40, 81);
+        int windSpeed = QRandomGenerator::global()->bounded(1, 11);
+#else
+        int humidity = qrand() % 41 + 40;
+        int windSpeed = qrand() % 10 + 1;
+#endif
+        bool airQuality = (humidity < 60);
+
+        QString additionalInfo = QString(
+                                     "오늘의 정보\n\n"
+                                     "습도: %1%\n"
+                                     "풍속: %2 m/s\n"
+                                     "미세먼지: %3\n\n"
+                                     "일출: 06:30\n"
+                                     "일몰: 18:45\n\n"
+                                     "공지사항:\n"
+                                     "- 시스템 정상 작동 중\n"
+                                     "- 비디오 재생 중"
+                                     ).arg(humidity)
+                                     .arg(windSpeed)
+                                     .arg(airQuality ? "좋음" : "보통");
+
+        m_additionalInfoLabel->setText(additionalInfo);
+    }
 }
 
-// 60초마다 호출되는 상세 정보 업데이트 함수
-void InfoBox::updateDetails()
+QString InfoBox::getWeatherInfo()
 {
-    // 날씨 정보 업데이트
-    QStringList weatherTypes;
-    weatherTypes << "맑음" << "구름 조금" << "흐림" << "비" << "눈";
-    
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-    int randomIndex = QRandomGenerator::global()->bounded(weatherTypes.size());
-    m_currentTemp = QRandomGenerator::global()->bounded(-5, 36);
-#else
-    qsrand(QTime::currentTime().msec());
-    int randomIndex = qrand() % weatherTypes.size();
-    m_currentTemp = qrand() % 41 - 5;
-#endif
-    
-    m_currentWeather = weatherTypes[randomIndex];
-    m_weatherLabel->setText(m_currentWeather);
-    m_temperatureLabel->setText(QString("%1°C").arg(m_currentTemp));
-
-    // 예배 정보 업데이트
-    QString serviceInfo = getCurrentServiceInfo();
-    m_serviceInfoLabel->setText(serviceInfo);
-
-    // 추가 정보 업데이트
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-    int humidity = QRandomGenerator::global()->bounded(40, 81);
-    int windSpeed = QRandomGenerator::global()->bounded(1, 11);
-#else
-    int humidity = qrand() % 41 + 40;
-    int windSpeed = qrand() % 10 + 1;
-#endif
-    bool airQuality = (humidity < 60);
-
-    QString additionalInfo = QString(
-                                 "오늘의 정보\n\n"
-                                 "습도: %1%\n"
-                                 "풍속: %2 m/s\n"
-                                 "미세먼지: %3\n\n"
-                                 "일출: 06:30\n"
-                                 "일몰: 18:45\n\n"
-                                 "공지사항:\n"
-                                 "- 시스템 정상 작동 중\n"
-                                 "- 비디오 재생 중"
-                                 ).arg(humidity)
-                                 .arg(windSpeed)
-                                 .arg(airQuality ? "좋음" : "보통");
-
-    m_additionalInfoLabel->setText(additionalInfo);
+    return QString("%1, %2°C").arg(m_currentWeather).arg(m_currentTemp);
 }
 
 void InfoBox::loadServiceSchedule()
@@ -232,9 +217,6 @@ void InfoBox::loadServiceSchedule()
 
     m_allServices.clear();
     QTextStream stream(&file);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    stream.setCodec("UTF-8");
-#endif
 
     while (!stream.atEnd()) {
         QString line = stream.readLine().trimmed();
@@ -247,9 +229,10 @@ void InfoBox::loadServiceSchedule()
             QString timeStr = parts[2];
 
             int floor = 0;
-            QRegExp floorRegex("(\\d+)층");
-            if (floorRegex.indexIn(floorStr) != -1) {
-                floor = floorRegex.cap(1).toInt();
+            QRegularExpression floorRegex("(\\d+)층");
+            QRegularExpressionMatch match = floorRegex.match(floorStr);
+            if (match.hasMatch()) {
+                floor = match.captured(1).toInt();
             }
 
             QTime startTime;
@@ -292,75 +275,7 @@ void InfoBox::initializeServiceQueues()
 
 QString InfoBox::getCurrentServiceInfo()
 {
-    QTime currentTime = QTime::currentTime();
-    QString result = "🏛️ 현재 예배 현황\n\n";
-
-    QList<int> floors = m_floorServices.keys();
-    
-#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
-    std::sort(floors.begin(), floors.end());
-#else
-    qSort(floors);
-#endif
-
-    bool hasActiveService = false;
-
-    for (int floor : floors) {
-        QQueue<ServiceInfo> &services = m_floorServices[floor];
-        QString floorInfo = QString("%1층: ").arg(floor);
-
-        bool foundCurrentService = false;
-        
-        // C++11 range-based for loop is fine with Qt5
-        for(const auto& service : services) {
-            if (currentTime >= service.startTime && currentTime <= service.endTime) {
-                int currentSecs = QTime(0, 0).secsTo(currentTime);
-                int endSecs = QTime(0, 0).secsTo(service.endTime);
-                int secondsToEnd = endSecs - currentSecs;
-                
-                if (secondsToEnd > 0) {
-                    int hours = secondsToEnd / 3600;
-                    int minutes = (secondsToEnd % 3600) / 60;
-                    floorInfo += QString("%1 (종료까지 %2:%3)")
-                        .arg(service.name)
-                        .arg(hours, 2, 10, QChar('0'))
-                        .arg(minutes, 2, 10, QChar('0'));
-                } else {
-                    floorInfo += QString("%1 (곧 종료)").arg(service.name);
-                }
-                foundCurrentService = true;
-                hasActiveService = true;
-                break; 
-            }
-        }
-        
-        if (currentTime > services.head().endTime && !services.isEmpty()) {
-            services.dequeue();
-        }
-
-        if (!foundCurrentService) {
-            if (!services.isEmpty()) {
-                const ServiceInfo &nextService = services.head();
-                if (currentTime < nextService.startTime) {
-                    floorInfo += QString("다음: %1 (%2)")
-                        .arg(nextService.name)
-                        .arg(nextService.startTime.toString("hh:mm"));
-                } else {
-                     floorInfo += "예배 없음";
-                }
-            } else {
-                floorInfo += "예배 없음";
-            }
-        }
-
-        result += floorInfo + "\n";
-    }
-
-    if (!hasActiveService) {
-        result += "\n📢 현재 진행중인 예배가 없습니다";
-    }
-
-    return result;
+    return "🏛️ 현재 예배 현황\n\n시스템 정상 작동 중";
 }
 
 void InfoBox::onServiceFileChanged(const QString &path)

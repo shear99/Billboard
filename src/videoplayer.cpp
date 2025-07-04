@@ -1,7 +1,7 @@
 #include "videoplayer.h"
 #include <QMediaPlayer>
 #include <QVideoWidget>
-#include <QMediaPlaylist>
+#include <QAudioOutput>
 #include <QVBoxLayout>
 #include <QDir>
 #include <QFileInfo>
@@ -23,15 +23,12 @@ VideoPlayer::VideoPlayer(QWidget *parent)
     // 미디어 플레이어 구성요소 초기화
     m_player = new QMediaPlayer(this);
     m_videoWidget = new QVideoWidget(this);
-    m_playlist = new QMediaPlaylist(this);
+    m_audioOutput = new QAudioOutput(this);
     m_watcher = new QFileSystemWatcher(this);
 
     // 플레이어 설정
     m_player->setVideoOutput(m_videoWidget);
-    m_player->setPlaylist(m_playlist);
-
-    // 플레이리스트 설정 (반복 재생)
-    m_playlist->setPlaybackMode(QMediaPlaylist::Loop);
+    m_player->setAudioOutput(m_audioOutput);
 
     // 레이아웃 설정
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -58,17 +55,25 @@ VideoPlayer::VideoPlayer(QWidget *parent)
     // 파일 시스템 감시 설정
     setupWatcher();
 
-    // 시그널 연결 (Qt5 방식 - SIGNAL/SLOT 매크로 사용)
-    connect(m_player, SIGNAL(error(QMediaPlayer::Error)),
-            this, SLOT(handleError()));
+    // 시그널 연결 (Qt6 방식)
+    connect(m_player, &QMediaPlayer::errorOccurred,
+            this, &VideoPlayer::handleError);
 
     // 미디어 상태 변경 감지
-    connect(m_player, SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),
-            this, SLOT(onMediaStatusChanged()));
+    connect(m_player, &QMediaPlayer::mediaStatusChanged,
+            this, &VideoPlayer::onMediaStatusChanged);
 
     // 재생 상태 변경 감지
-    connect(m_player, SIGNAL(stateChanged(QMediaPlayer::State)),
-            this, SLOT(onStateChanged()));
+    connect(m_player, &QMediaPlayer::playbackStateChanged,
+            this, &VideoPlayer::onStateChanged);
+
+    // 재생 완료 시 다음 비디오 재생
+    connect(m_player, &QMediaPlayer::mediaStatusChanged,
+            this, [this](QMediaPlayer::MediaStatus status) {
+                if (status == QMediaPlayer::EndOfMedia) {
+                    playNext();
+                }
+            });
 
     // 위치 변경 감지 (디버깅용)
     //connect(m_player, SIGNAL(positionChanged(qint64)),this, SLOT(onPositionChanged(qint64)));
@@ -91,8 +96,8 @@ void VideoPlayer::setupWatcher()
 
 void VideoPlayer::loadVideos()
 {
-    // 플레이리스트 초기화
-    m_playlist->clear();
+    // 비디오 파일 목록 초기화
+    m_videoFiles.clear();
     m_currentFiles.clear();
 
     // 비디오 파일 검색
@@ -107,20 +112,32 @@ void VideoPlayer::loadVideos()
         return;
     }
 
-    // 파일들을 재생 목록에 추가
+    // 파일들을 목록에 추가
     for (const QFileInfo &fileInfo : files) {
         QString filePath = fileInfo.absoluteFilePath();
-        m_playlist->addMedia(QUrl::fromLocalFile(filePath));
+        m_videoFiles.append(filePath);
         m_currentFiles.append(fileInfo.fileName());
         qDebug() << "재생 목록 추가:" << fileInfo.fileName();
     }
 
-    // 플레이리스트에 파일이 있으면 재생 시작
-    if (m_playlist->mediaCount() > 0) {
-        m_player->setVolume(50); // 볼륨 50%로 설정
+    // 첫 번째 파일 재생 시작
+    if (!m_videoFiles.isEmpty()) {
+        m_currentIndex = 0;
+        m_audioOutput->setVolume(0.5); // 볼륨 50%로 설정
+        m_player->setSource(QUrl::fromLocalFile(m_videoFiles[m_currentIndex]));
         m_player->play();
-        qDebug() << "재생 시작, 총" << m_playlist->mediaCount() << "개 파일";
+        qDebug() << "재생 시작, 총" << m_videoFiles.size() << "개 파일";
     }
+}
+
+void VideoPlayer::playNext()
+{
+    if (m_videoFiles.isEmpty()) return;
+    
+    m_currentIndex = (m_currentIndex + 1) % m_videoFiles.size();
+    m_player->setSource(QUrl::fromLocalFile(m_videoFiles[m_currentIndex]));
+    m_player->play();
+    qDebug() << "다음 비디오 재생:" << QFileInfo(m_videoFiles[m_currentIndex]).fileName();
 }
 
 void VideoPlayer::onDirectoryChanged(const QString &path)
@@ -170,7 +187,7 @@ void VideoPlayer::onMediaStatusChanged()
 
 void VideoPlayer::onStateChanged()
 {
-    QMediaPlayer::State state = m_player->state();
+    QMediaPlayer::PlaybackState state = m_player->playbackState();
     qDebug() << "재생 상태 변경:" << state;
 
     switch (state) {
@@ -184,4 +201,15 @@ void VideoPlayer::onStateChanged()
         qDebug() << "정지";
         break;
     }
+}
+
+void VideoPlayer::handleError()
+{
+    qWarning() << "비디오 재생 오류:" << m_player->errorString();
+}
+
+void VideoPlayer::onPositionChanged(qint64 position)
+{
+    Q_UNUSED(position);
+    // 디버깅용 함수
 }

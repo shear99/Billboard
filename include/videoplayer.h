@@ -7,7 +7,7 @@
 
 class QMediaPlayer;
 class QVideoWidget;
-class QMediaPlaylist;
+class QAudioOutput;
 
 class VideoPlayer : public QWidget
 {
@@ -31,11 +31,12 @@ private:
 
     QMediaPlayer *m_player;
     QVideoWidget *m_videoWidget;
-    QMediaPlaylist *m_playlist;
+    QAudioOutput *m_audioOutput;
     QFileSystemWatcher *m_watcher;
 
     QString m_videoPath;
     QStringList m_currentFiles;
+    QStringList m_videoFiles;
     int m_currentIndex;
 };
 

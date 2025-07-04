@@ -47,17 +47,14 @@ private:
     QLabel *m_serviceInfoLabel;
     QLabel *m_additionalInfoLabel;
 
-    QTimer *m_updateTimer;
+    QTimer *m_updateTimer; // 기존 타이머는 시간 표시용으로 사용
+    QTimer *m_slowUpdateTimer; // 날씨 등 느린 업데이트용 타이머
     QVBoxLayout *m_layout;
     QFileSystemWatcher *m_serviceWatcher;
 
     // 날씨 시뮬레이션을 위한 변수
     int m_currentTemp;
     QString m_currentWeather;
-    
-    QTimer *m_updateTimer; // 기존 타이머는 시간 표시용으로 사용
-    QTimer *m_slowUpdateTimer; // 날씨 등 느린 업데이트용 타이머
-    QVBoxLayout *m_layout;
 
     // 예배 스케줄 관련
     QString m_serviceFilePath;
